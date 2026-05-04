@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: harness-api
+  labels:
+    app.kubernetes.io/name: harness-api
+    app.kubernetes.io/part-of: agent-eval-harness
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: harness-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: harness-api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/example/agent-eval-harness:0.3.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: harness-secrets
+                  key: database-url
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: harness-secrets
+                  key: openai-api-key
+            - name: JUDGE_MODEL
+              value: gpt-4o-mini
+            - name: AGENT_MODEL
+              value: gpt-4o-mini
+            - name: MAX_STEPS
+              value: "8"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: harness-api
+  labels:
+    app.kubernetes.io/name: harness-api
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: harness-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
