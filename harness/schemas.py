@@ -33,3 +33,64 @@ class ScenarioIn(BaseModel):
             raise ValueError("scenario name must not be blank")
         return cleaned
 
+
+class ScenarioOut(ScenarioIn):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime
+
+
+class StepOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    index: int
+    kind: str
+    name: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+    latency_ms: int
+    tokens: int
+
+
+class CheckResult(BaseModel):
+    name: str
+    passed: bool
+    detail: str = ""
+
+
+class JudgeVerdict(BaseModel):
+    score: float = Field(ge=0.0, le=1.0)
+    passed: bool
+    reasoning: str = ""
+    missing: list[str] = Field(default_factory=list)
+
+
+class RunOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    scenario_id: int
+    model: str
+    status: Literal["pending", "running", "passed", "failed", "error"]
+    score: float | None = None
+    passed: bool | None = None
+    final_answer: str | None = None
+    error: str | None = None
+    started_at: datetime
+    finished_at: datetime | None = None
+
+
+class RunReport(RunOut):
+    checks: list[CheckResult] = Field(default_factory=list)
+    judge: JudgeVerdict | None = None
+    steps: list[StepOut] = Field(default_factory=list)
+
+
+class CompareOut(BaseModel):
+    run_a: int
+    run_b: int
+    score_a: float | None = None
+    score_b: float | None = None
+    delta: float | None = None
+    regressed_checks: list[str] = Field(default_factory=list)
+    fixed_checks: list[str] = Field(default_factory=list)
